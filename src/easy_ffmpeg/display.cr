@@ -196,6 +196,44 @@ module EasyFfmpeg
       puts ""
     end
 
+    # ── Image sequence ──
+
+    def self.show_image_sequence_info(seq : ImageSequence::SequenceInfo, output_path : String,
+                                      fps : Int32, preset : Preset, target_format : String)
+      puts ""
+      label("Input", "#{File.basename(seq.directory.rstrip("/"))}/ (#{seq.frame_count} frames, #{EasyFfmpeg.format_file_size(seq.total_size)})")
+      label("Images", "#{seq.extension.lstrip('.')} #{seq.width}x#{seq.height}")
+      pattern_label = seq.input_pattern.mode.sequential? ? "sequential" : "glob"
+      label("Pattern", "#{File.basename(seq.input_pattern.pattern)} (#{pattern_label})")
+
+      expected_duration = seq.frame_count.to_f64 / fps
+      label("Output", File.basename(output_path))
+
+      is_gif = target_format == "gif"
+      if is_gif
+        label("Encode", "GIF (palette-optimized)")
+      else
+        config = PresetConfig.for(preset, target_format)
+        encoder = config.video_codec || CodecSupport::DEFAULT_VIDEO_CODEC[target_format]? || "libx264"
+        preset_label = preset.default? ? "" : " (--#{preset.to_s.downcase})"
+        label("Encode", "#{CodecSupport.codec_display_name(encoder)}#{preset_label}")
+      end
+
+      label("FPS", "#{fps}fps -> #{EasyFfmpeg.format_duration(expected_duration)}")
+      puts ""
+    end
+
+    def self.show_image_sequence_done(output_path : String, input_total_size : Int64, elapsed_seconds : Float64)
+      output_size = File.size(output_path)
+      size_info = EasyFfmpeg.format_file_size(output_size)
+
+      puts ""
+      label("Done", "#{File.basename(output_path)} (#{size_info})".colorize(:green).to_s)
+      label("", "Completed in #{EasyFfmpeg.format_duration(elapsed_seconds)}")
+      label("", File.expand_path(output_path))
+      puts ""
+    end
+
     def self.show_error(message : String)
       STDERR.puts " #{"Error".colorize(:red)}  #{message}"
     end

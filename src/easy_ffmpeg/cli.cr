@@ -18,6 +18,7 @@ module EasyFfmpeg
       start_time : Float64? = nil
       end_time : Float64? = nil
       duration : Float64? = nil
+      fps_override : Int32? = nil
       input_path : String? = nil
       target_ext : String? = nil
 
@@ -25,8 +26,8 @@ module EasyFfmpeg
         parser.banner = "Usage: easy-ffmpeg <input> <format> [options]"
         parser.separator ""
         parser.separator "Arguments:"
-        parser.separator "  input       Input video file path"
-        parser.separator "  format      Output format (mp4, mkv, mov, webm, avi, ts)"
+        parser.separator "  input       Input video file or image directory"
+        parser.separator "  format      Output format (mp4, mkv, mov, webm, avi, ts, gif)"
         parser.separator ""
         parser.separator "Presets:"
 
@@ -51,6 +52,14 @@ module EasyFfmpeg
         parser.separator ""
         parser.separator "Options:"
 
+        parser.on("--fps N", "Frame rate for image sequences (default: 24 video, 10 GIF)") do |n|
+          val = n.to_i?
+          unless val && val >= 1 && val <= 120
+            Display.show_error("--fps must be between 1 and 120")
+            exit 1
+          end
+          fps_override = val
+        end
         parser.on("-o PATH", "--output=PATH", "Custom output file path") { |p| custom_output = p }
         parser.on("--dry-run", "Print ffmpeg command without executing") { dry_run = true }
         parser.on("--force", "Overwrite output file if it exists") { force = true }
@@ -80,6 +89,24 @@ module EasyFfmpeg
       unless input = input_path
         Display.show_error("missing input file. Run with -h for help.")
         exit 1
+      end
+
+      # Image sequence mode: input is a directory
+      if Dir.exists?(input)
+        unless ext = target_ext
+          Display.show_error("missing output format. Example: easy-ffmpeg /path/to/frames/ mp4")
+          exit 1
+        end
+        ext = ".#{ext}" unless ext.starts_with?(".")
+        ext = ext.downcase
+
+        if start_time || end_time || duration
+          Display.show_error("--start/--end/--duration are not supported for image sequences")
+          exit 1
+        end
+
+        run_image_sequence(input, ext, fps_override, preset, custom_output, dry_run, force)
+        return
       end
 
       unless File.exists?(input)
@@ -207,6 +234,70 @@ module EasyFfmpeg
       exit(success ? 0 : 1)
     end
 
+    private def self.run_image_sequence(input : String, ext : String, fps_override : Int32?,
+                                        preset : Preset, custom_output : String?,
+                                        dry_run : Bool, force : Bool)
+      is_gif = ext == ".gif"
+
+      unless is_gif || CodecSupport.supported_output_format?(ext)
+        Display.show_error("unsupported output format: #{ext}")
+        supported = CodecSupport::EXT_TO_FORMAT.keys.map(&.lstrip('.')).join(", ")
+        STDERR.puts "  Supported: #{supported}, gif"
+        exit 1
+      end
+
+      if is_gif && !preset.default?
+        Display.show_error("presets do not apply to GIF output")
+        exit 1
+      end
+
+      fps = fps_override || (is_gif ? 10 : 24)
+
+      target_format = is_gif ? "gif" : CodecSupport.format_for_ext(ext).not_nil!
+
+      # Check ffmpeg/ffprobe
+      unless check_command("ffmpeg")
+        Display.show_error("ffmpeg not found. Please install ffmpeg.")
+        exit 1
+      end
+      unless check_command("ffprobe")
+        Display.show_error("ffprobe not found. Please install ffmpeg.")
+        exit 1
+      end
+
+      seq = begin
+        ImageSequence.scan(input)
+      rescue ex
+        Display.show_error("failed to scan directory: #{ex.message}")
+        exit 1
+      end
+
+      # Build output path
+      dest = custom_output
+      unless dest
+        dir_name = File.basename(input.rstrip("/"))
+        dir_parent = File.dirname(input.rstrip("/"))
+        dest = File.join(dir_parent, "#{dir_name}#{ext}")
+      end
+
+      if File.exists?(dest) && !force
+        Display.show_error("output file already exists: #{dest}")
+        STDERR.puts "  Use --force to overwrite."
+        exit 1
+      end
+
+      Display.show_image_sequence_info(seq, dest, fps, preset, target_format)
+
+      if dry_run
+        args = ImageSequence.build_ffmpeg_args(seq, dest, fps, preset, target_format, force)
+        Display.show_dry_run(args)
+        exit 0
+      end
+
+      success = ImageSequence.run(seq, dest, fps, preset, target_format, force)
+      exit(success ? 0 : 1)
+    end
+
     private def self.parse_time_or_exit(value : String, flag : String) : Float64
       result = EasyFfmpeg.parse_time(value)
       unless result
@@ -248,6 +339,12 @@ module EasyFfmpeg
       puts ""
       puts "  # Preview the ffmpeg command without running it"
       puts "  easy-ffmpeg movie.mkv mp4 --web --dry-run"
+      puts ""
+      puts "  # Convert image sequence to video"
+      puts "  easy-ffmpeg /path/to/frames/ mp4"
+      puts ""
+      puts "  # Create animated GIF from images at 15fps"
+      puts "  easy-ffmpeg /path/to/frames/ gif --fps 15"
     end
 
     def self.check_command(name : String) : Bool

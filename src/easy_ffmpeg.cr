@@ -5,6 +5,7 @@ require "./easy_ffmpeg/media_info"
 require "./easy_ffmpeg/plan"
 require "./easy_ffmpeg/display"
 require "./easy_ffmpeg/converter"
+require "./easy_ffmpeg/image_sequence"
 require "./easy_ffmpeg/interactive"
 require "./easy_ffmpeg/cli"
 
