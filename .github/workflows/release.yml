@@ -33,7 +33,7 @@ jobs:
         run: |
           mkdir -p bin
           docker run --rm -v "$PWD":/app -w /app crystallang/crystal:1.19.1-alpine \
-            crystal build src/easy_ffmpeg.cr -o bin/easy-ffmpeg --release --no-debug --static
+            crystal build src/easy_ffmpeg_cli.cr -o bin/easy-ffmpeg --release --no-debug --static
 
       # macOS: native build
       - name: Install Crystal (macOS)
@@ -46,7 +46,12 @@ jobs:
         if: startsWith(matrix.os, 'macos')
         run: |
           mkdir -p bin
-          crystal build src/easy_ffmpeg.cr -o bin/easy-ffmpeg --release --no-debug
+          crystal build src/easy_ffmpeg_cli.cr -o bin/easy-ffmpeg --release --no-debug
+
+      - name: Smoke test binary
+        run: |
+          test -x bin/easy-ffmpeg
+          bin/easy-ffmpeg --version | grep -F "easy-ffmpeg "
 
       - name: Rename binary
         run: mv bin/easy-ffmpeg bin/easy-ffmpeg-${{ matrix.target }}
