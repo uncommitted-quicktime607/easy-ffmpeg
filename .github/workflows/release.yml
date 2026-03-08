@@ -79,3 +79,75 @@ jobs:
           generate_release_notes: true
           files: |
             artifacts/*
+
+      - name: Update Homebrew formula
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          SHA_DARWIN_ARM64=$(grep 'easy-ffmpeg-darwin-arm64' artifacts/SHA256SUMS.txt | awk '{print $1}')
+          SHA_LINUX_AMD64=$(grep 'easy-ffmpeg-linux-amd64' artifacts/SHA256SUMS.txt | awk '{print $1}')
+          SHA_LINUX_ARM64=$(grep 'easy-ffmpeg-linux-arm64' artifacts/SHA256SUMS.txt | awk '{print $1}')
+
+          cat > /tmp/easy-ffmpeg.rb << FORMULA
+          class EasyFfmpeg < Formula
+            desc "Smart CLI wrapper around ffmpeg for video conversion and remuxing"
+            homepage "https://github.com/akitaonrails/easy-ffmpeg"
+            version "${VERSION}"
+            license "MIT"
+
+            on_macos do
+              on_arm do
+                url "https://github.com/akitaonrails/easy-ffmpeg/releases/download/v#{version}/easy-ffmpeg-darwin-arm64",
+                    using: CurlDownloadStrategy
+                sha256 "${SHA_DARWIN_ARM64}"
+              end
+            end
+
+            on_linux do
+              on_intel do
+                url "https://github.com/akitaonrails/easy-ffmpeg/releases/download/v#{version}/easy-ffmpeg-linux-amd64",
+                    using: CurlDownloadStrategy
+                sha256 "${SHA_LINUX_AMD64}"
+              end
+
+              on_arm do
+                url "https://github.com/akitaonrails/easy-ffmpeg/releases/download/v#{version}/easy-ffmpeg-linux-arm64",
+                    using: CurlDownloadStrategy
+                sha256 "${SHA_LINUX_ARM64}"
+              end
+            end
+
+            depends_on "ffmpeg"
+
+            def install
+              bin.install Dir.glob("easy-ffmpeg*").first => "easy-ffmpeg"
+            end
+
+            test do
+              assert_match version.to_s, shell_output("#{bin}/easy-ffmpeg --version")
+            end
+          end
+          FORMULA
+
+          # Remove leading whitespace from heredoc
+          sed -i 's/^          //' /tmp/easy-ffmpeg.rb
+
+          # Push to homebrew-tap repo via GitHub API
+          CONTENT=$(base64 -w 0 /tmp/easy-ffmpeg.rb)
+
+          # Get current file SHA (if it exists)
+          FILE_SHA=$(curl -s -H "Authorization: token ${HOMEBREW_TAP_TOKEN}" \
+            "https://api.github.com/repos/akitaonrails/homebrew-tap/contents/Formula/easy-ffmpeg.rb" \
+            | jq -r '.sha // empty')
+
+          SHA_PARAM=""
+          if [ -n "$FILE_SHA" ]; then
+            SHA_PARAM=", \"sha\": \"${FILE_SHA}\""
+          fi
+
+          curl -s -X PUT \
+            -H "Authorization: token ${HOMEBREW_TAP_TOKEN}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/akitaonrails/homebrew-tap/contents/Formula/easy-ffmpeg.rb" \
+            -d "{\"message\": \"Update easy-ffmpeg to ${VERSION}\", \"content\": \"${CONTENT}\"${SHA_PARAM}}"

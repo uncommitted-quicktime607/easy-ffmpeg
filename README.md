@@ -18,13 +18,19 @@ A smart CLI wrapper around ffmpeg for video conversion, remuxing, and image sequ
 
 ## Installation
 
-### Quick install
+### Homebrew (macOS)
+
+```sh
+brew install akitaonrails/tap/easy-ffmpeg
+```
+
+### Quick install (Linux / macOS)
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/akitaonrails/easy-ffmpeg/master/install.sh | sh
 ```
 
-Pre-built binaries are available for Linux (x86_64, arm64) and macOS (Intel, Apple Silicon).
+Pre-built binaries are available for Linux (x86_64, arm64) and macOS (Apple Silicon).
 
 ### Download from GitHub Releases
 
