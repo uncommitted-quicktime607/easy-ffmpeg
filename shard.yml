@@ -1,12 +1,12 @@
 name: easy_ffmpeg
-version: 0.1.0
+version: 0.2.0
 
 authors:
   - AkitaOnRails <fabioakita@gmail.com>
 
 targets:
   easy-ffmpeg:
-    main: src/easy_ffmpeg.cr
+    main: src/easy_ffmpeg_cli.cr
 
 crystal: '>= 1.19.1'
 

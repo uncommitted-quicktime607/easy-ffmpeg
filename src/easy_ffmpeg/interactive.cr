@@ -268,8 +268,10 @@ module EasyFfmpeg
       target_format = CodecSupport.format_for_ext(ext).not_nil!
 
       # Build plan
+      overwrite_output = File.exists?(output_path)
       plan = ConversionPlan.new(info, output_path, target_format, preset,
-        start_time: actual_start, end_time: actual_end)
+        start_time: actual_start, end_time: actual_end,
+        overwrite_output: overwrite_output)
 
       Display.show_plan(plan)
 

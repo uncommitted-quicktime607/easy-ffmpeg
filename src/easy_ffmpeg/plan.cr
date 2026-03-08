@@ -36,10 +36,12 @@ module EasyFfmpeg
     getter scale : String?
     getter aspect : String?
     getter crop : Bool
+    getter overwrite_output : Bool
 
     def initialize(@input, @output_path, @target_format, @preset,
                    @start_time = nil, @end_time = nil, @duration = nil,
-                   @scale = nil, @aspect = nil, @crop = false)
+                   @scale = nil, @aspect = nil, @crop = false,
+                   @overwrite_output = false)
       @stream_plans = [] of StreamPlan
       @global_args = [] of String
       @video_filters = [] of String
@@ -260,13 +262,22 @@ module EasyFfmpeg
 
     private def plan_other_streams
       input.other_streams.each do |stream|
-        @stream_plans << StreamPlan.new(
-          stream: stream,
-          action: StreamAction::Copy,
-          encoder: "copy",
-          reason: "passthrough",
-          output_codec_display: CodecSupport.codec_display_name(stream.codec_name),
-        )
+        if stream.is_attached_pic && %w[mp4 mov matroska].includes?(target_format)
+          @stream_plans << StreamPlan.new(
+            stream: stream,
+            action: StreamAction::Copy,
+            encoder: "copy",
+            reason: "cover art",
+            output_codec_display: CodecSupport.codec_display_name(stream.codec_name),
+          )
+        else
+          @stream_plans << StreamPlan.new(
+            stream: stream,
+            action: StreamAction::Drop,
+            reason: "unsupported auxiliary stream",
+            output_codec_display: "",
+          )
+        end
       end
     end
 

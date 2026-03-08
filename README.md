@@ -41,7 +41,7 @@ Grab the binary for your platform from the [latest release](https://github.com/a
 ```sh
 git clone https://github.com/akitaonrails/easy-ffmpeg.git
 cd easy-ffmpeg
-crystal build src/easy_ffmpeg.cr -o bin/easy-ffmpeg --release
+crystal build src/easy_ffmpeg_cli.cr -o bin/easy-ffmpeg --release
 ```
 
 Copy `bin/easy-ffmpeg` somewhere in your `$PATH`.
@@ -200,7 +200,8 @@ For image sequences, it scans the directory, detects the naming pattern, probes 
 ## Development
 
 ```sh
-crystal build src/easy_ffmpeg.cr -o bin/easy-ffmpeg
+crystal build src/easy_ffmpeg_cli.cr -o bin/easy-ffmpeg
+crystal spec
 ```
 
 ## Contributing

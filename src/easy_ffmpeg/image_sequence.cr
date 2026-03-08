@@ -51,11 +51,6 @@ module EasyFfmpeg
       all_images.each { |_, ext| ext_counts[ext] += 1 }
       dominant_ext = ext_counts.max_by { |_, count| count }[0]
 
-      # Normalize .jpeg -> .jpg, .tiff -> .tif
-      canonical = dominant_ext
-      canonical = ".jpg" if canonical == ".jpeg"
-      canonical = ".tif" if canonical == ".tiff"
-
       # Filter to dominant extension (include aliases)
       aliases = case dominant_ext
                 when ".jpg", ".jpeg" then [".jpg", ".jpeg"]
@@ -106,7 +101,6 @@ module EasyFfmpeg
         padding = digit_str.size
 
         # Check all files match this pattern with consecutive numbering
-        expected_numbers = [] of Int32
         all_match = files.all? do |name|
           bn = File.basename(name, File.extname(name))
           if m = bn.match(/^(.*?)(\d+)$/)
@@ -130,7 +124,6 @@ module EasyFfmpeg
           consecutive = numbers.each_cons(2).all? { |pair| pair[1] == pair[0] + 1 }
 
           if consecutive
-            start_num = numbers.first
             ext_for_pattern = File.extname(files.first)
             pattern_str = File.join(dir, "#{prefix}%0#{padding}d#{ext_for_pattern}")
             return InputPattern.new(InputMode::Sequential, pattern_str)
@@ -147,31 +140,22 @@ module EasyFfmpeg
       output_buf = IO::Memory.new
       error_buf = IO::Memory.new
 
-      status = Process.run(
-        "ffprobe",
-        args: ["-v", "quiet", "-print_format", "json", "-show_streams", path],
-        output: output_buf,
-        error: error_buf,
-      )
+      status = begin
+        Process.run(
+          "ffprobe",
+          args: ["-v", "quiet", "-print_format", "json", "-show_streams", path],
+          output: output_buf,
+          error: error_buf,
+        )
+      rescue ex : File::Error
+        raise "failed to start ffprobe: #{ex.message}"
+      end
 
       unless status.success?
         raise "ffprobe failed on #{path}: #{error_buf.to_s.strip}"
       end
 
-      json = JSON.parse(output_buf.to_s)
-      if streams = json["streams"]?
-        streams.as_a.each do |s|
-          if s["codec_type"]?.try(&.as_s) == "video"
-            w = s["width"]?.try(&.as_i)
-            h = s["height"]?.try(&.as_i)
-            if w && h
-              return {w, h}
-            end
-          end
-        end
-      end
-
-      raise "could not determine resolution of #{path}"
+      parse_resolution_probe_output(output_buf.to_s, path)
     end
 
     def self.build_ffmpeg_args(seq : SequenceInfo, output_path : String,
@@ -181,7 +165,7 @@ module EasyFfmpeg
                                crop : Bool = false) : Array(String)
       is_gif = target_format == "gif"
       args = ["-hide_banner", "-v", "error", "-stats_period", "0.5", "-progress", "pipe:1"]
-      args << "-y"
+      args << (force ? "-y" : "-n")
       args << "-framerate" << fps.to_s
 
       if seq.input_pattern.mode.glob?
@@ -281,15 +265,24 @@ module EasyFfmpeg
       total_duration = seq.frame_count.to_f64 / fps
       start_time = Time.instant
 
-      process = Process.new(
-        "ffmpeg",
-        args: args,
-        output: Process::Redirect::Pipe,
-        error: Process::Redirect::Pipe,
-      )
+      process = begin
+        Process.new(
+          "ffmpeg",
+          args: args,
+          output: Process::Redirect::Pipe,
+          error: Process::Redirect::Pipe,
+        )
+      rescue ex : File::Error
+        Display.show_error("failed to start ffmpeg: #{ex.message}")
+        return false
+      end
 
-      stderr_output = ""
-      spawn { stderr_output = process.error.gets_to_end }
+      stderr_done = Channel(String).new(1)
+      spawn do
+        stderr_done.send(process.error.gets_to_end)
+      rescue
+        stderr_done.send("")
+      end
 
       last_speed = "0x"
 
@@ -310,6 +303,7 @@ module EasyFfmpeg
       end
 
       status = process.wait
+      stderr_output = stderr_done.receive
       Display.clear_progress
 
       elapsed = (Time.instant - start_time).total_seconds
@@ -326,6 +320,28 @@ module EasyFfmpeg
         end
         false
       end
+    end
+
+    private def self.parse_resolution_probe_output(json_text : String, path : String) : {Int32, Int32}
+      json = begin
+        JSON.parse(json_text)
+      rescue ex : JSON::ParseException
+        raise "ffprobe returned invalid JSON for #{path}: #{ex.message}"
+      end
+
+      if streams = json["streams"]?.try(&.as_a?)
+        streams.each do |s|
+          next unless s["codec_type"]?.try(&.as_s?) == "video"
+
+          w = s["width"]?.try(&.as_i?)
+          h = s["height"]?.try(&.as_i?)
+          if w && h
+            return {w, h}
+          end
+        end
+      end
+
+      raise "could not determine resolution of #{path}"
     end
   end
 end

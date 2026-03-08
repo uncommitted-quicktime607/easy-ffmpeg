@@ -228,7 +228,7 @@ module EasyFfmpeg
       # Build conversion plan
       plan = ConversionPlan.new(info, dest, target_format, preset,
         start_time: start_time, end_time: end_time, duration: duration,
-        scale: scale, aspect: aspect, crop: crop)
+        scale: scale, aspect: aspect, crop: crop, overwrite_output: force)
 
       # Apply --no-subs: override subtitle plans to Drop
       if no_subs

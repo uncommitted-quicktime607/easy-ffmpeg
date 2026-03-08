@@ -8,5 +8,3 @@ require "./easy_ffmpeg/converter"
 require "./easy_ffmpeg/image_sequence"
 require "./easy_ffmpeg/interactive"
 require "./easy_ffmpeg/cli"
-
-EasyFfmpeg::CLI.run

@@ -122,18 +122,31 @@ module EasyFfmpeg
       output = IO::Memory.new
       error = IO::Memory.new
 
-      status = Process.run(
-        "ffprobe",
-        args: ["-v", "quiet", "-print_format", "json", "-show_streams", "-show_format", path],
-        output: output,
-        error: error,
-      )
+      status = begin
+        Process.run(
+          "ffprobe",
+          args: ["-v", "quiet", "-print_format", "json", "-show_streams", "-show_format", path],
+          output: output,
+          error: error,
+        )
+      rescue ex : File::Error
+        raise "failed to start ffprobe: #{ex.message}"
+      end
 
       unless status.success?
         raise "ffprobe failed: #{error.to_s.strip}"
       end
 
-      json = JSON.parse(output.to_s)
+      from_probe_json(path, output.to_s)
+    end
+
+    def self.from_probe_json(path : String, json_text : String) : MediaInfo
+      json = begin
+        JSON.parse(json_text)
+      rescue ex : JSON::ParseException
+        raise "ffprobe returned invalid JSON: #{ex.message}"
+      end
+
       parse_probe_output(path, json)
     end
 
@@ -143,8 +156,8 @@ module EasyFfmpeg
       subtitle_streams = [] of StreamInfo
       other_streams = [] of StreamInfo
 
-      if streams = json["streams"]?
-        streams.as_a.each do |s|
+      if streams = json["streams"]?.try(&.as_a?)
+        streams.each do |s|
           info = parse_stream(s)
           case info.codec_type
           when "video"
@@ -163,14 +176,14 @@ module EasyFfmpeg
         end
       end
 
-      fmt = json["format"]
+      fmt = json["format"]?
       format = FormatInfo.new(
-        filename: fmt["filename"]?.try(&.as_s) || path,
-        format_name: fmt["format_name"]?.try(&.as_s) || "unknown",
-        format_long_name: fmt["format_long_name"]?.try(&.as_s) || "Unknown",
-        duration: fmt["duration"]?.try(&.as_s.to_f64) || 0.0,
-        size: fmt["size"]?.try(&.as_s.to_i64) || 0_i64,
-        bit_rate: fmt["bit_rate"]?.try(&.as_s.to_i64) || 0_i64,
+        filename: json_string(fmt.try(&.["filename"]?)) || path,
+        format_name: json_string(fmt.try(&.["format_name"]?)) || "unknown",
+        format_long_name: json_string(fmt.try(&.["format_long_name"]?)) || "Unknown",
+        duration: json_float(fmt.try(&.["duration"]?)) || 0.0,
+        size: json_int64(fmt.try(&.["size"]?)) || 0_i64,
+        bit_rate: json_int64(fmt.try(&.["bit_rate"]?)) || 0_i64,
       )
 
       new(path, video_streams, audio_streams, subtitle_streams, other_streams, format)
@@ -181,23 +194,23 @@ module EasyFfmpeg
       disposition = s["disposition"]?
 
       StreamInfo.new(
-        index: s["index"].as_i,
-        codec_name: s["codec_name"]?.try(&.as_s) || "unknown",
-        codec_long_name: s["codec_long_name"]?.try(&.as_s) || "Unknown",
-        codec_type: s["codec_type"]?.try(&.as_s) || "unknown",
-        width: s["width"]?.try(&.as_i),
-        height: s["height"]?.try(&.as_i),
-        frame_rate: parse_frame_rate(s["r_frame_rate"]?.try(&.as_s)),
-        bit_rate: s["bit_rate"]?.try(&.as_s.to_i64?) || parse_tag_bit_rate(s),
-        channels: s["channels"]?.try(&.as_i),
-        channel_layout: s["channel_layout"]?.try(&.as_s),
-        sample_rate: s["sample_rate"]?.try(&.as_s.to_i?),
-        profile: s["profile"]?.try(&.as_s),
-        pix_fmt: s["pix_fmt"]?.try(&.as_s),
-        language: tags.try(&.["language"]?.try(&.as_s)),
-        title: tags.try(&.["title"]?.try(&.as_s)),
-        is_default: (disposition.try { |d| d["default"]?.try(&.as_i) == 1 }) || false,
-        is_attached_pic: (disposition.try { |d| d["attached_pic"]?.try(&.as_i) == 1 }) || false,
+        index: json_int(s["index"]?) || 0,
+        codec_name: json_string(s["codec_name"]?) || "unknown",
+        codec_long_name: json_string(s["codec_long_name"]?) || "Unknown",
+        codec_type: json_string(s["codec_type"]?) || "unknown",
+        width: json_int(s["width"]?),
+        height: json_int(s["height"]?),
+        frame_rate: parse_frame_rate(json_string(s["r_frame_rate"]?)),
+        bit_rate: json_int64(s["bit_rate"]?) || parse_tag_bit_rate(s),
+        channels: json_int(s["channels"]?),
+        channel_layout: json_string(s["channel_layout"]?),
+        sample_rate: json_int(s["sample_rate"]?),
+        profile: json_string(s["profile"]?),
+        pix_fmt: json_string(s["pix_fmt"]?),
+        language: json_string(tags.try(&.["language"]?)),
+        title: json_string(tags.try(&.["title"]?)),
+        is_default: (json_int(disposition.try(&.["default"]?)) == 1),
+        is_attached_pic: (json_int(disposition.try(&.["attached_pic"]?)) == 1),
       )
     end
 
@@ -215,8 +228,73 @@ module EasyFfmpeg
     end
 
     private def self.parse_tag_bit_rate(s : JSON::Any) : Int64?
-      s["tags"]?.try(&.["BPS"]?.try(&.as_s.to_i64?)) ||
-        s["tags"]?.try(&.["BPS-eng"]?.try(&.as_s.to_i64?))
+      json_int64(s["tags"]?.try(&.["BPS"]?)) ||
+        json_int64(s["tags"]?.try(&.["BPS-eng"]?))
+    end
+
+    private def self.json_string(value : JSON::Any?) : String?
+      return nil unless value
+
+      case raw = value.raw
+      when String
+        raw
+      when Int32, Int64, Float64
+        raw.to_s
+      else
+        nil
+      end
+    end
+
+    private def self.json_int(value : JSON::Any?) : Int32?
+      return nil unless value
+
+      case raw = value.raw
+      when Int32
+        raw
+      when Int64
+        return nil if raw > Int32::MAX.to_i64 || raw < Int32::MIN.to_i64
+        raw.to_i
+      when Float64
+        raw.finite? ? raw.to_i : nil
+      when String
+        raw.to_i?
+      else
+        nil
+      end
+    end
+
+    private def self.json_int64(value : JSON::Any?) : Int64?
+      return nil unless value
+
+      case raw = value.raw
+      when Int32
+        raw.to_i64
+      when Int64
+        raw
+      when Float64
+        raw.finite? ? raw.to_i64 : nil
+      when String
+        raw.to_i64?
+      else
+        nil
+      end
+    end
+
+    private def self.json_float(value : JSON::Any?) : Float64?
+      return nil unless value
+
+      case raw = value.raw
+      when Float64
+        raw
+      when Int32
+        raw.to_f64
+      when Int64
+        raw.to_f64
+      when String
+        raw.to_f64?
+      else
+        nil
+      end
     end
   end
 
@@ -287,12 +365,14 @@ module EasyFfmpeg
     case parts.size
     when 1
       # Plain seconds: "90" or "90.5"
-      parts[0].to_f64?
+      seconds = parts[0].to_f64?
+      seconds && seconds >= 0 ? seconds : nil
     when 2
       # mm:ss or mm:ss.xxx
       mm = parts[0].to_i64?
       ss = parts[1].to_f64?
       return nil unless mm && ss
+      return nil if mm < 0 || ss < 0 || ss >= 60
       mm * 60.0 + ss
     when 3
       # hh:mm:ss or hh:mm:ss.xxx
@@ -300,6 +380,7 @@ module EasyFfmpeg
       mm = parts[1].to_i64?
       ss = parts[2].to_f64?
       return nil unless hh && mm && ss
+      return nil if hh < 0 || mm < 0 || mm >= 60 || ss < 0 || ss >= 60
       hh * 3600.0 + mm * 60.0 + ss
     else
       nil

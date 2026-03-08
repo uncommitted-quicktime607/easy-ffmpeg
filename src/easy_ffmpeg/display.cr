@@ -183,7 +183,11 @@ module EasyFfmpeg
     # ── Final summary ──
 
     def self.show_done(output_path : String, input_size : Int64, elapsed_seconds : Float64)
-      output_size = File.size(output_path)
+      unless output_size = safe_file_size(output_path)
+        show_error("conversion completed but output file is missing: #{output_path}")
+        return
+      end
+
       ratio = if input_size > 0
                 pct = ((1.0 - output_size.to_f64 / input_size.to_f64) * 100).to_i
                 if pct > 0
@@ -248,7 +252,11 @@ module EasyFfmpeg
     end
 
     def self.show_image_sequence_done(output_path : String, input_total_size : Int64, elapsed_seconds : Float64)
-      output_size = File.size(output_path)
+      unless output_size = safe_file_size(output_path)
+        show_error("conversion completed but output file is missing: #{output_path}")
+        return
+      end
+
       size_info = EasyFfmpeg.format_file_size(output_size)
 
       puts ""
@@ -270,6 +278,12 @@ module EasyFfmpeg
       else
         puts " #{name.ljust(LABEL_WIDTH).colorize(:cyan)}#{value}"
       end
+    end
+
+    private def self.safe_file_size(path : String) : Int64?
+      File.size(path)
+    rescue
+      nil
     end
   end
 end

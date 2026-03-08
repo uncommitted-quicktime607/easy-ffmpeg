@@ -7,7 +7,7 @@ module EasyFfmpeg
 
     def build_args : Array(String)
       args = ["-hide_banner", "-v", "error", "-stats_period", "0.5", "-progress", "pipe:1"]
-      args << "-y" # overwrite (we check before reaching here)
+      args << (plan.overwrite_output ? "-y" : "-n")
 
       # Trim: -ss before -i for fast seeking
       if ss = plan.start_time
@@ -90,17 +90,25 @@ module EasyFfmpeg
       args = build_args
       total_duration = plan.effective_duration
       start_time = Time.instant
+      stderr_done = Channel(String).new(1)
+      process = begin
+        Process.new(
+          "ffmpeg",
+          args: args,
+          output: Process::Redirect::Pipe,
+          error: Process::Redirect::Pipe,
+        )
+      rescue ex : File::Error
+        Display.show_error("failed to start ffmpeg: #{ex.message}")
+        return false
+      end
 
-      process = Process.new(
-        "ffmpeg",
-        args: args,
-        output: Process::Redirect::Pipe,
-        error: Process::Redirect::Pipe,
-      )
-
-      # Read stderr in a fiber to avoid pipe deadlock
-      stderr_output = ""
-      spawn { stderr_output = process.error.gets_to_end }
+      # Read stderr in a fiber to avoid pipe deadlock.
+      spawn do
+        stderr_done.send(process.error.gets_to_end)
+      rescue
+        stderr_done.send("")
+      end
 
       if plan.is_remux_only
         Display.show_remux_progress
@@ -126,6 +134,7 @@ module EasyFfmpeg
       end
 
       status = process.wait
+      stderr_output = stderr_done.receive
       Display.clear_progress
 
       elapsed = (Time.instant - start_time).total_seconds
