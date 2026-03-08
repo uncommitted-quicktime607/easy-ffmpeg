@@ -46,7 +46,9 @@ jobs:
 
       - name: Build binary (macOS)
         if: startsWith(matrix.os, 'macos')
-        run: crystal build src/easy_ffmpeg.cr -o bin/easy-ffmpeg --release --no-debug
+        run: |
+          mkdir -p bin
+          crystal build src/easy_ffmpeg.cr -o bin/easy-ffmpeg --release --no-debug
 
       - name: Rename binary
         run: mv bin/easy-ffmpeg bin/easy-ffmpeg-${{ matrix.target }}
